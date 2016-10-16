@@ -1,0 +1,88 @@
+<pre class='metadata'>
+Title: WebRTC Frame Event Logging API
+Shortname: webrtc-specs
+Level: 1
+Status: CG-DRAFT
+Group: WICG
+Issue Tracking: https://www.github.com/WICG/webrtc-specs/issues/
+URL: http://example.com/url-this-spec-will-live-at
+Editor: Harald Alvestrand, Google www.google.com, harald@alvestrand.no
+Abstract: This spec presents an API for getting frame-level information on the time it takes to process frames (video or audio frames) through a WebRTC pipeline.
+</pre>
+
+Introduction {#intro}
+=====================
+
+See https://github.com/tabatkins/bikeshed to get started.
+
+This document describes an event logging API that can serve as an extension to RTCPeerConnection’s “getStats” API.
+The chief goals of this extension are:
+
+Get information about series of events
+Allow the user to get information about all events at reasonable overhead
+Build an extensible framework for carrying event information
+
+The initial version of this API will be an object that can attach to a MediaStreamTrack (which defines its source) and its destination (since it can have mulitple destinations).
+
+The initial object we record information about is a video frame. Later extensions can encompass audio frames too, with not much change in design.
+
+Use cases
+Imagine a remote control application: There is a control that allows the user to click on the screen locally, which causes changes to happen in the video generated remotely. The app wishes to collect latency information on the time between the click and the user seeing the result.
+The click can be timed using existing mechanisms. The click event will then be sent to the remote app, and the remote app will identify the first frame generated after the click, use the recording API to figure out when it was generated (in the local clock), when it was sent out over the network, and what its RTP sequence number was. It returns this information to the local app.
+The local app will use the event recording API to record when the frame with the given RTP sequence number arrived, and when it was displayed (in the local clock). It can then measure the click-to-display lag.
+It can use the data recorded remotely to figure out if generation and sending took a long time; it can’t absolutely record the network delay between the parties (since the clocks are unsynchronized), but can get some boundaries on what the lag cause could be. This aids very much in locating problem spots.
+
+API
+
+[Constructor(MediaStreamTrack source, any destination, EventCollectionParameters? parameters)]
+interface RTCEventCollection : EventTarget {
+    Promise<void> setEventCollection(EventCollectionParameters);
+    Promise<sequence<EventCollectionResult>> collectEvents;
+}
+
+dictionary EventCollectionParameters {
+     [EnforceRange] long eventBufferSize = 50;
+}
+
+This is the max number of events that will be stored. If more time passes between calls to collectEvents, the oldest events are discarded.
+
+dictionary EventCollectionResult {
+    DOMHiResTimeStamp initialTime;  // Time when frame was recorded or received
+    DOMHiResTimeStamp finalTime;   // Time when frame was displayed, stored, 
+                                                            // sent or discarded
+}
+
+dictionary EventCollectionVideoFrameResult : EventCollectionResult {
+    long FrameIdentifier;   // RTP timestamp value of frame
+    Int payloadType; 
+    Int qpValue;
+    EventCollectionDisposition disposition;
+    // Intermediate events in a frame’s lifetime.
+    // OPEN ISSUE: We might want to define a dict for “eventtype, start, end” end use
+    // a sequence of those instead. If so, it can move to the “generic” framework.
+    DOMHiResTimeStamp encodeStart;
+    DOMHIResTimeStamp encodeEnd;
+    DOMHiResTimeStamp sendStart;
+    DOMHiResTimeStamp sendEnd;
+     // On the receive side
+    DOMHiResTimeStamp receiveStart;
+    DOMHiResTimeStamp receiveEnd;
+    DOMHiResTimeStamp decodeStart;
+    DOMHiResTimeStamp decodeEnd;
+    DOMHiResTimeStamp renderStart;
+}
+
+enum EventCollectionDisposition {
+    “Displayed”,  // Displayed to the user
+    “Discarded”,  // Normal operation, such as a paused <video>, caused discard
+    “Failed”,   // Something bad happened to this frame - corruption, congestion….
+    “Transmitted”, // Gone out over the wire
+    “Recorded”   // such as by MediaRecorder
+}
+These dictionaries and enums can be extended at need.
+This provides an interface that is:
+Designed for discrete event list delivery
+Limits the amount of resources that needs to be spent on buffering events
+Does not attach to the (possibly designed-out later) PeerConnection object
+
+
