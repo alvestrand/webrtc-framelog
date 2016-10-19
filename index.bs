@@ -9,8 +9,7 @@ Editor: Harald Alvestrand, Google www.google.com, harald@alvestrand.no
 Abstract: This spec presents an API for getting frame-level information on the time it takes to process frames (video or audio frames) through a WebRTC pipeline.
 </pre>
 
-Introduction {#intro}
-=====================
+# Introduction {#intro}
 
 This document describes an event logging API that can serve as an extension to RTCPeerConnection’s “getStats” API.
 The chief goals of this extension are:
@@ -23,7 +22,7 @@ The initial version of this API will be an object that can attach to a MediaStre
 
 The initial object we record information about is a video frame. Later extensions can encompass audio frames too, with not much change in design.
 
-###Use cases
+## Use cases
 
 Imagine a remote control application: There is a control that allows the user to click on the screen locally, which causes changes to happen in the video generated remotely. The app wishes to collect latency information on the time between the click and the user seeing the result.
 
@@ -33,7 +32,7 @@ The local app will use the event recording API to record when the frame with the
 
 It can use the data recorded remotely to figure out if generation and sending took a long time; it can’t absolutely record the network delay between the parties (since the clocks are unsynchronized), but can get some boundaries on what the lag cause could be. This aids very much in locating problem spots.
 
-##API
+# API
 
 <pre class='idl'>
 [Constructor(MediaStreamTrack source, any destination, optional EventCollectionParameters? parameters)]
@@ -85,8 +84,11 @@ dictionary EventCollectionVideoFrameResult : EventCollectionResult {
 </pre>
 These dictionaries and enums can be extended at need.
 This provides an interface that is:
-Designed for discrete event list delivery
-Limits the amount of resources that needs to be spent on buffering events
-Does not attach to the (possibly designed-out later) PeerConnection object
+
+* Designed for discrete event list delivery
+* Limits the amount of resources that needs to be spent on buffering events
+* Does not attach to the (possibly designed-out later) PeerConnection object
+
+
 
 
